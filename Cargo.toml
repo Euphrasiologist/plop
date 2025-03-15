@@ -1,7 +1,8 @@
 [package]
-name = "dings"
-version = "0.1.0"
-edition = "2024"
+name = "plop"
+version = "0.1.01"
+edition = "2021"
 
 [dependencies]
 hdrhistogram = "7.5.4"
+pico-args = "0.5.0"

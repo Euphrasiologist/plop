@@ -1,6 +1,7 @@
 use std::io::{self, BufRead, Write};
 
 mod canvas;
+mod cli;
 mod data;
 mod frame;
 
@@ -13,13 +14,17 @@ fn main() -> io::Result<()> {
     let stdin = std::io::stdin();
     let mut stdin = stdin.lock();
 
-    let log_x = false;
-    let log_y = false;
-    let x_is_row = true;
-    let width = 90;
-    let height = 25;
-    let mut mode = Mode::Count;
-    let cdf = false;
+    let cli::Args {
+        width,
+        height,
+        mut mode,
+        x_is_row,
+        log_x,
+        log_y,
+        cdf,
+    } = cli::Args::from_env()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("error parsing args - {}", e)))?;
+
     if cdf {
         assert!(x_is_row);
         assert!(!log_x);
