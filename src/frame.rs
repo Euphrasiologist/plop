@@ -17,6 +17,7 @@ pub(crate) struct Frame {
 
 impl Frame {
     pub(crate) fn new_over(width: usize, height: usize, data: &Data) -> Self {
+        // Calculate X bounds
         let min_x = data
             .xs
             .iter()
@@ -29,6 +30,8 @@ impl Frame {
             .filter(|v| v.is_finite())
             .copied()
             .max_by(f64::total_cmp);
+
+        // Calculate Y bounds
         let min_y = data
             .ys
             .iter()
@@ -44,46 +47,33 @@ impl Frame {
             .copied()
             .max_by(f64::total_cmp);
 
-        let (Some(mut min_x), Some(max_x)) = (min_x, max_x) else {
-            todo!();
+        let (Some(mut min_x), Some(mut max_x)) = (min_x, max_x) else {
+            panic!("No finite x-values found in data");
         };
-        let (Some(mut min_y), Some(max_y)) = (min_y, max_y) else {
-            todo!();
+        let (Some(mut min_y), Some(mut max_y)) = (min_y, max_y) else {
+            panic!("No finite y-values found in data");
         };
 
-        /* Override bounds that would lead to a range of zero, to avoid a
-         * crash when plotting. (Found by afl.) */
-        let mut max_x = f64::max(min_x + 1.0, max_x);
-        let mut max_y = f64::max(min_y + 1.0, max_y);
-
+        // Make sure ranges are not zero (avoid divide-by-zero)
         let mut range_x = max_x - min_x;
-        let mut range_y = max_y - min_y;
-
-        // If along a given axis, the data doesn't intersect the axis itself, we'd like to start/end
-        // plotting at the axis. this makes datasets read slightly more reasonably since they'll "start
-        // at 0", rather than starting at some other value that just happens to be the minimum of the
-        // distribution. however, if the data is sufficiently far from 0, and has a sufficiently small
-        // range, plotting from zero would "squish" it so much that it won't be readable, and so we try
-        // to find a heuristic in between that generally results in reasonable display behaviour.
-        const CROSS_PAD: f64 = 2.0;
-        let crosses_x = min_x <= 0. && max_x >= 0.;
-        let crosses_y = min_y <= 0. && max_y >= 0.;
-        if !crosses_x {
-            if min_x > 0. && (min_x - range_x * CROSS_PAD) < 0. {
-                min_x = 0.;
-                range_x = max_x;
-            } else if max_x < 0. && (max_x + range_x * CROSS_PAD) > 0. {
-                max_x = 0.;
-                range_x = -min_x;
-            }
+        if range_x == 0.0 {
+            range_x = 1.0;
+            max_x = min_x + range_x;
         }
-        if !crosses_y {
-            if min_y > 0. && (min_y - range_y * CROSS_PAD) < 0. {
-                min_y = 0.;
-                range_y = max_y;
-            } else if max_y < 0. && (max_y + range_y * CROSS_PAD) > 0. {
-                max_y = 0.;
-                range_y = -min_y;
+
+        let mut range_y = max_y - min_y;
+        if range_y == 0.0 {
+            range_y = 1.0;
+            max_y = min_y + range_y;
+        }
+
+        // Force Y min to 0.0 if all data is above 0 (common for positive distributions)
+        if min_y > 0.0 {
+            min_y = 0.0;
+            range_y = max_y - min_y;
+            if range_y == 0.0 {
+                range_y = 1.0; // Safety fallback
+                max_y = min_y + range_y;
             }
         }
 
